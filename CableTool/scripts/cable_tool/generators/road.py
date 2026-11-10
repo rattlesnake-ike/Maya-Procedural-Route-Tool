@@ -59,6 +59,10 @@ PRESETS = (
         "roadDepth": 0.2}),
 )
 
+# The status box mentions fill once the road stands this far above the
+# ground (scene units).
+RAISED_NOTE = 0.5
+
 # Built-in materials: part -> (base colour, roughness). The surface and
 # the centre line take their colour from the builder instead.
 MATERIALS = (
@@ -226,6 +230,23 @@ class RoadGenerator(BaseGenerator):
                 else:
                     cmds.setAttr(target, value)
             nodes.untag(node)
+
+    def note(self):
+        """With a Ground: say when the road stands well above it, and
+        which settings decide that. (Critique 11-03, 1:42:10: "I couldn't
+        tell if it was following the slope or pasted on top.")"""
+        builder = self.builder()
+        if builder is None:
+            return ""
+        raised = cmds.getAttr(builder + ".outRaised")
+        if raised < RAISED_NOTE:
+            return ""
+        return tr("It stands up to {0} above the ground: it climbs no "
+                  "steeper than Max Grade ({1}%) and evens out dips over "
+                  "Grade Smoothing, on fill. Raise Max Grade or lower Grade "
+                  "Smoothing for a road that hugs the ground.").format(
+                      round(raised, 1),
+                      round(cmds.getAttr(self.group + ".roadGrade"), 1))
 
     def builder(self):
         """The roadToolBuilder node of this road."""

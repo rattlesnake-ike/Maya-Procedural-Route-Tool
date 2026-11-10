@@ -308,5 +308,6 @@
  "Cobblestone Lane": "鹅卵石小巷",
  "Gravel Track": "砂石小道",
  "A mesh for the road to run over: it follows the terrain, smoothed, with side slopes down to it. Empty: the road runs at the anchors' height.": "道路经过的网格：道路平滑地顺着地形，并有边坡延伸到地面。为空时：道路位于锚点的高度。",
- "Your own material for the road surface: select it in the Hypershade, or an object that uses it. Empty: the built-in material, coloured by Road Surface.": "你自己的路面材质：在 Hypershade 中选择它，或选择使用该材质的物体。为空时：使用内置材质，颜色由路面类型决定。"
+ "Your own material for the road surface: select it in the Hypershade, or an object that uses it. Empty: the built-in material, coloured by Road Surface.": "你自己的路面材质：在 Hypershade 中选择它，或选择使用该材质的物体。为空时：使用内置材质，颜色由路面类型决定。",
+ "It stands up to {0} above the ground: it climbs no steeper than Max Grade ({1}%) and evens out dips over Grade Smoothing, on fill. Raise Max Grade or lower Grade Smoothing for a road that hugs the ground.": "它最多高出地面 {0}：道路的坡度不会超过最大坡度（{1}%），并在坡度平滑的范围内用填方填平凹处。调高最大坡度或调低坡度平滑，可以让道路更贴合地面。"
 }

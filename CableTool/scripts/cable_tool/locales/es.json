@@ -308,5 +308,6 @@
  "Cobblestone Lane": "Callejón adoquinado",
  "Gravel Track": "Camino de grava",
  "A mesh for the road to run over: it follows the terrain, smoothed, with side slopes down to it. Empty: the road runs at the anchors' height.": "Una malla sobre la que pasa la carretera: sigue el terreno, suavizada, con taludes hasta él. Vacío: la carretera va a la altura de las anclas.",
- "Your own material for the road surface: select it in the Hypershade, or an object that uses it. Empty: the built-in material, coloured by Road Surface.": "Tu propio material para la calzada: selecciónalo en el Hypershade, o un objeto que lo use. Vacío: el material incorporado, coloreado según el Firme."
+ "Your own material for the road surface: select it in the Hypershade, or an object that uses it. Empty: the built-in material, coloured by Road Surface.": "Tu propio material para la calzada: selecciónalo en el Hypershade, o un objeto que lo use. Vacío: el material incorporado, coloreado según el Firme.",
+ "It stands up to {0} above the ground: it climbs no steeper than Max Grade ({1}%) and evens out dips over Grade Smoothing, on fill. Raise Max Grade or lower Grade Smoothing for a road that hugs the ground.": "Queda hasta {0} por encima del terreno: no sube más que la Pendiente máxima ({1}%) y allana las hondonadas a lo largo del Suavizado de pendiente, sobre relleno. Sube la Pendiente máxima o baja el Suavizado de pendiente para que la carretera se ciña al terreno."
 }

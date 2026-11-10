@@ -328,9 +328,11 @@ def _at(values, distance, targets):
     return out.reshape((len(targets),) + values.shape[1:])
 
 
-def build_road(anchor_points, settings, ground=None):
+def build_road(anchor_points, settings, ground=None, report=None):
     """Builders for the five meshes (surface, markings, centre line,
-    sidewalks, verge) and the road's length."""
+    sidewalks, verge) and the road's length. A dict passed as report
+    gets "raised": the most the road stands above the height the ground
+    under it asks for (on fill, from Max Grade and Grade Smoothing)."""
     s = settings
     meshes = [MeshBuilder(1.0) for _ in range(5)]
     surface, markings, centre_paint, sidewalks, verge = meshes
@@ -370,6 +372,7 @@ def build_road(anchor_points, settings, ground=None):
                     need[i] = max(need[i], height - rise[i, k] + CLEARANCE)
         missing = ~np.isfinite(need)
         need[missing] = stations[missing, 1]
+        asked = need.copy()
         need = limit_grade(need, s["roadGrade"] / 100.0 * spacing, loop)
         window = max(1, int(round(s["roadSmooth"] / max(spacing, EPSILON))))
         level = need.copy()
@@ -381,6 +384,8 @@ def build_road(anchor_points, settings, ground=None):
             level = np.maximum(_box(level, window, loop, ramp=True), need)
         level = limit_grade(round_crests(level, window, loop),
                             s["roadGrade"] / 100.0 * spacing, loop)
+        if report is not None:
+            report["raised"] = float(np.max(level - asked))
     else:
         level = stations[:, 1].copy()
 
@@ -503,7 +508,8 @@ class RoadBuilderNode(om.MPxNode):
     """Inputs: anchor[i] (matrix, and mesh + component for a vertex or
     face anchor), groundMesh + groundMatrix and the road's settings.
     Outputs: outSurface, outMarkings, outCentreLine, outSidewalks,
-    outVerge (meshes in world space), outLength, and outSurfaceColor,
+    outVerge (meshes in world space), outLength, outRaised (see
+    build_road's report), and outSurfaceColor,
     outSurfaceRoughness and outCentreColor for the built-in materials."""
 
     SETTINGS = ("roadCurve", "roadDetail", "roadSmooth", "roadGrade",
@@ -579,6 +585,12 @@ class RoadBuilderNode(om.MPxNode):
         num.storable = False
         cls.addAttribute(cls.outLength)
         meshes.append(cls.outLength)
+        cls.outRaised = num.create("outRaised", "ors",
+                                   om.MFnNumericData.kDouble, 0.0)
+        num.writable = False
+        num.storable = False
+        cls.addAttribute(cls.outRaised)
+        meshes.append(cls.outRaised)
 
         cls.outSurfaceColor = num.createColor("outSurfaceColor", "osc")
         num.writable = False
@@ -620,15 +632,16 @@ class RoadBuilderNode(om.MPxNode):
             data.setClean(self.outCentreColor)
             return None
         outputs = [getattr(self, name) for name in self.OUTPUTS]
-        if attr not in outputs + [self.outLength]:
+        if attr not in outputs + [self.outLength, self.outRaised]:
             return None
         settings = self._read_settings(data)
         points = [anchor_point(*anchor) for anchor in self._read_anchors(data)]
         ground = data.inputValue(self.groundMesh).asMesh()
         ground = None if ground.isNull() else Ground(
             ground, data.inputValue(self.groundMatrix).asMatrix())
+        report = {}
         if len(points) >= 2:
-            built, length = build_road(points, settings, ground)
+            built, length = build_road(points, settings, ground, report)
         else:
             built, length = [MeshBuilder(1.0) for _ in outputs], 0.0
         for out, builder in zip(outputs, built):
@@ -636,6 +649,8 @@ class RoadBuilderNode(om.MPxNode):
             data.setClean(out)
         data.outputValue(self.outLength).setDouble(length)
         data.setClean(self.outLength)
+        data.outputValue(self.outRaised).setDouble(report.get("raised", 0.0))
+        data.setClean(self.outRaised)
         return None
 
     def _read_settings(self, data):

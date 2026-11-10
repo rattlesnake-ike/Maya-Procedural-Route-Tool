@@ -308,5 +308,6 @@
  "Cobblestone Lane": "Ruelle pavée",
  "Gravel Track": "Chemin de gravier",
  "A mesh for the road to run over: it follows the terrain, smoothed, with side slopes down to it. Empty: the road runs at the anchors' height.": "Un maillage sur lequel passe la route : elle suit le relief, lissée, avec des talus jusqu'à lui. Vide : la route passe à la hauteur des ancres.",
- "Your own material for the road surface: select it in the Hypershade, or an object that uses it. Empty: the built-in material, coloured by Road Surface.": "Votre propre matériau pour la chaussée : sélectionnez-le dans l'Hypershade, ou un objet qui l'utilise. Vide : le matériau intégré, coloré selon le Revêtement."
+ "Your own material for the road surface: select it in the Hypershade, or an object that uses it. Empty: the built-in material, coloured by Road Surface.": "Votre propre matériau pour la chaussée : sélectionnez-le dans l'Hypershade, ou un objet qui l'utilise. Vide : le matériau intégré, coloré selon le Revêtement.",
+ "It stands up to {0} above the ground: it climbs no steeper than Max Grade ({1}%) and evens out dips over Grade Smoothing, on fill. Raise Max Grade or lower Grade Smoothing for a road that hugs the ground.": "Elle dépasse le sol de {0} au plus : elle ne monte pas plus que la Pente maximale ({1}%) et comble les creux sur le Lissage du profil, en remblai. Augmentez la Pente maximale ou réduisez le Lissage du profil pour une route qui épouse le sol."
 }

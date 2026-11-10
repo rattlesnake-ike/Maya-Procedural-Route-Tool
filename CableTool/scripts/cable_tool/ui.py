@@ -959,6 +959,9 @@ class CableToolWindow(QtWidgets.QWidget):
                      "in the Channel Box.").format(
                          route_mod.short_name(group), len(route.anchors),
                          tr(cable.noun))
+        note = cable.note()
+        if note:
+            message += " " + note
         overlapping = route.overlapping_spans()
         if overlapping:
             self.set_status(message + " " + tr(
@@ -981,8 +984,8 @@ class CableToolWindow(QtWidgets.QWidget):
         finally:
             self._refresh_current()  # also when the rebuild was refused
         cmds.select(group, replace=True)
-        self.set_status(tr("Rebuilt {0}.").format(
-            route_mod.short_name(group)), "ok")
+        self.set_status(" ".join(filter(None, [tr("Rebuilt {0}.").format(
+            route_mod.short_name(group)), cable.note()])), "ok")
 
     @guarded
     def on_bake(self):

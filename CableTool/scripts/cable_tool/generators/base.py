@@ -222,6 +222,11 @@ class BaseGenerator(object):
                 drivers.append((source[0], key))
         return drivers
 
+    def note(self):
+        """A line for the status box after a build or rebuild, when the
+        mode has something the artist should know. Empty: nothing."""
+        return ""
+
     def bake(self):
         """Freeze the build into plain meshes with no history, then remove
         the live build. Returns the group holding the baked meshes."""

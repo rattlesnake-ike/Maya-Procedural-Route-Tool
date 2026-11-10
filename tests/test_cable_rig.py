@@ -1249,8 +1249,12 @@ def road_lies_on_an_even_slope_it_is_allowed_to_climb():
     assert above < 0.2, above
     # Steeper than Max Grade it still ramps up on fill, by design.
     cmds.file(new=True, force=True)
-    _built, above = road_on_a_slope(15.0)
+    built, above = road_on_a_slope(15.0)
     assert above > 5.0, above
+    # ... and the status box says so, and what to change.
+    assert "Max Grade (10.0%)" in built.note(), built.note()
+    cmds.setAttr(built.group + ".roadGrade", 30.0)
+    assert built.note() == ""
 
 
 @test
