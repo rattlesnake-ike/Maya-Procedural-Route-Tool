@@ -129,6 +129,7 @@ class BaseGenerator(object):
                                         tr(self.label)))
         self._check_dependencies()
         anchors = route.validate()
+        self._check_extras(extras or {})
         settings = self.sanitize(settings)
         name = name or self._next_name()
 
@@ -137,17 +138,24 @@ class BaseGenerator(object):
                                     parent=nodes.root_group())
             self.group = cmds.ls(group, long=True)[0]
             nodes.tag(self.group, self.cable_id)
-            cmds.addAttr(self.group, longName=MODE_ATTR, dataType="string")
-            cmds.setAttr(self.group + "." + MODE_ATTR, self.mode,
-                         type="string", lock=True)
-            self._add_setting_attrs(settings)
-            self._record_anchors(anchors)
-            self._record_extras(extras or {})
-            self._build_network(name, anchors, settings)
-            for xform in cmds.listRelatives(self.group, children=True,
-                                            fullPath=True) or []:
-                for channel in ("t", "r", "s"):
-                    cmds.setAttr(xform + "." + channel, lock=True)
+            try:
+                cmds.addAttr(self.group, longName=MODE_ATTR,
+                             dataType="string")
+                cmds.setAttr(self.group + "." + MODE_ATTR, self.mode,
+                             type="string", lock=True)
+                self._add_setting_attrs(settings)
+                self._record_anchors(anchors)
+                self._record_extras(extras or {})
+                self._build_network(name, anchors, settings)
+                for xform in cmds.listRelatives(self.group, children=True,
+                                                fullPath=True) or []:
+                    for channel in ("t", "r", "s"):
+                        cmds.setAttr(xform + "." + channel, lock=True)
+            except Exception:
+                # Never leave half a build behind: an empty group that the
+                # window would go on "editing" and Clear All would count.
+                self.delete()
+                raise
         return self.group
 
     def update(self, settings):
@@ -178,12 +186,24 @@ class BaseGenerator(object):
         other connections driving its settings (an animated Gate Swing,
         say): deleting the group would otherwise delete its animation."""
         name = self.name
+        # Everything that can be checked is checked before the old build
+        # is deleted, so a route or picker the new one can't use leaves
+        # the old one standing. (Demo, 11-03: the pipe's own mesh was
+        # picked as Clamp Mesh; Rebuild deleted the pipe, then failed.)
+        self._check_dependencies()
+        self._check_own(route.validate(), extras or {})
+        self._check_extras(extras or {})
         with nodes.undo_chunk("CableTool_Rebuild"):
             drivers = self._setting_drivers()
             for source, key in drivers:
                 cmds.disconnectAttr(source, self.group + "." + key)
             self.delete()
-            group = self.build(route, settings, name=name, extras=extras)
+            try:
+                group = self.build(route, settings, name=name, extras=extras)
+            except CableToolError as err:
+                raise CableToolError(u"{0} {1}".format(err, tr(
+                    "The old {0} was removed first; Ctrl+Z brings it "
+                    "back.").format(tr(self.noun))))
             for source, key in drivers:
                 if cmds.objExists(source) and key in settings:
                     cmds.connectAttr(source, group + "." + key, force=True)
@@ -285,15 +305,38 @@ class BaseGenerator(object):
             else:
                 cmds.setAttr(plug, keyable=True)
 
+    def _check_extras(self, extras):
+        """Raise CableToolError, naming the picker, if a picked node is no
+        longer in the scene."""
+        for key, label, _tip, _section in self.extras:
+            node = extras.get(key)
+            if node and not cmds.objExists(node):
+                raise CableToolError(tr(
+                    "{0}: '{1}' is not in the scene. Pick it again, or "
+                    "select nothing and press its Get Selected to clear "
+                    "it.").format(tr(label), node))
+
+    def _check_own(self, anchors, extras):
+        """Raise CableToolError if a rebuild would use a node this build
+        made itself: Rebuild deletes those first."""
+        own = set(cmds.ls(nodes.tagged_nodes(self.cable_id), long=True))
+        used = [route_mod.node_of(anchor) for anchor in anchors]
+        used += [node for node in extras.values()
+                 if node and cmds.objExists(node)]
+        for node in used:
+            if cmds.ls(node, long=True)[0] in own:
+                raise CableToolError(tr(
+                    "'{0}' is part of {1} itself, and Rebuild replaces it. "
+                    "Pick an object of your own instead.").format(
+                        route_mod.short_name(node),
+                        route_mod.short_name(self.group)))
+
     def _record_extras(self, extras):
+        self._check_extras(extras)
         for key, _label, _tip, _section in self.extras:
             cmds.addAttr(self.group, longName=key, attributeType="message")
             node = extras.get(key)
             if node:
-                if not cmds.objExists(node):
-                    raise CableToolError(tr(
-                        "'{0}' is not in the scene; pick it again.").format(
-                            node))
                 cmds.connectAttr(node + ".message",
                                  self.group + "." + key)
 

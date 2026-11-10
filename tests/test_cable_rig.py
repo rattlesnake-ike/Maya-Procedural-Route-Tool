@@ -589,6 +589,62 @@ def custom_clamp_mesh_is_instanced_and_survives_rebuild():
 
 
 @test
+def rebuild_refuses_its_own_parts_and_keeps_the_build():
+    # Class demo, 11-03: the pipe's own mesh was picked as Clamp Mesh.
+    # Rebuild deleted the pipe, then failed because the mesh was gone.
+    from cable_tool.config import CableToolError
+    a, b = locator("A", (0, 2, 0)), locator("B", (6, 2, 0))
+    cable = build([a, b], clampCount=2)
+    group = cable.group
+    own = cmds.ls(group + "|*_geo")[0]
+    before = cmds.polyEvaluate(own, face=True)
+    for extras, route in (({"clampSource": own}, cable.read_route()),
+                          ({}, type(cable.read_route())(own, b))):
+        try:
+            cable.rebuild(route, cable.read_settings(), extras)
+            assert False, "expected CableToolError"
+        except CableToolError as err:
+            assert "itself" in str(err), err
+        # Refused before anything was deleted: the build is untouched.
+        assert cable.group == group and cable.exists()
+        assert cmds.polyEvaluate(own, face=True) == before
+        assert len(clamps_of(cable)) == 2
+
+
+@test
+def failed_build_leaves_nothing_behind():
+    from cable_tool import nodes
+    from cable_tool.config import CableToolError
+    from cable_tool.generators import CableGenerator
+    from cable_tool.route import Route
+    a, b = locator("A", (0, 2, 0)), locator("B", (6, 2, 0))
+    cable = CableGenerator()
+    try:
+        cable.build(Route(a, b), {"clampCount": 2},
+                    extras={"clampSource": "deletedClamp"})
+        assert False, "expected CableToolError"
+    except CableToolError as err:
+        # The message names the picker, and how to clear it.
+        assert "Clamp Mesh" in str(err) and "deletedClamp" in str(err), err
+    assert cable.group is None
+    assert not cmds.ls("cable_*"), cmds.ls("cable_*")
+
+    # A failure part-way through the network (a Ground with no mesh) is
+    # cleaned up too.
+    from cable_tool.generators import RoadGenerator
+    road_ = RoadGenerator()
+    try:
+        road_.build(Route(a, b), {}, extras={"ground": locator("G", (0, 0, 0))})
+        assert False, "expected CableToolError"
+    except CableToolError:
+        pass
+    assert road_.group is None
+    left = [n for n in nodes.tagged_nodes()
+            if cmds.getAttr(n + ".cableToolId") != "root"]
+    assert not left and not cmds.ls("road_*"), (left, cmds.ls("road_*"))
+
+
+@test
 def presets_fill_in_defaults():
     from cable_tool.generators import CableGenerator
     tangle = CableGenerator.preset("Cyberpunk Tangle")

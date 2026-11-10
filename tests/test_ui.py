@@ -220,6 +220,37 @@ def run():
     win.on_generate()
     assert win.status.toPlainText().startswith("[WARNING]")
 
+    # Class demo, 11-03: with the pipe selected, Clamp Mesh > Get Selected
+    # took the pipe's own mesh; Rebuild then deleted the pipe and failed,
+    # and every Generate after it failed until the tool was restarted.
+    win.start_field.set_text("A")
+    cmds.select(geo)
+    picker = win.extra_fields["cable"]["clampSource"]
+    win.on_pick_extra(picker)
+    assert win.status.toPlainText().startswith("[WARNING]")
+    assert "built by this tool" in win.status.toPlainText()
+    assert picker.text() == ""  # refused: the field stays empty
+    # Typed in by hand, Rebuild refuses it and the pipe is still there.
+    picker.set_text(geo.split("|")[-1])
+    faces = cmds.polyEvaluate(geo, face=True)
+    win.on_rebuild()
+    assert "itself" in win.status.toPlainText(), win.status.toPlainText()
+    assert cmds.objExists(geo) and cmds.polyEvaluate(geo, face=True) == faces
+    assert win.current.exists() and win.rebuild_button.isEnabled()
+    # A picked mesh that was deleted since: the message names the picker,
+    # nothing half-built is left, and clearing the picker fixes it.
+    picker.set_text("goneClamp")
+    groups = len(cmds.ls("cable_*_GRP"))
+    win.on_generate()
+    assert "Clamp Mesh" in win.status.toPlainText(), win.status.toPlainText()
+    assert len(cmds.ls("cable_*_GRP")) == groups
+    cmds.select(clear=True)
+    win.on_pick_extra(picker)
+    win.on_rebuild()
+    assert win.status.toPlainText().startswith("[OK]"), \
+        win.status.toPlainText()
+    geo = cmds.ls(win.current.group + "|*_geo")[0]
+
     # Deleting the current cable is noticed.
     cmds.select(geo)
     win.on_delete_selected()

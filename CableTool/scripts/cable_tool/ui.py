@@ -778,6 +778,16 @@ class CableToolWindow(QtWidgets.QWidget):
         # A material (picked in the Hypershade) will do too.
         selection = (cmds.ls(selection=True, transforms=True)
                      or cmds.ls(selection=True, materials=True) or [])
+        if selection and nodes.made_by_tool(selection[0]):
+            # A picker wants the artist's own node. Something the tool
+            # built is deleted by Rebuild, Delete and Clear All, and would
+            # take whatever points at it down with it.
+            self.set_status(tr(
+                "'{0}' was built by this tool, so it can't be used as {1}. "
+                "Pick an object of your own, or select nothing and press "
+                "Get Selected to use the default.").format(
+                    selection[0], tr(field.label)), "warning")
+            return
         field.set_text(selection[0] if selection else "")
         if selection:
             self.set_status(tr("{0} set to {1}; it applies on Generate or "
@@ -965,8 +975,11 @@ class CableToolWindow(QtWidgets.QWidget):
             raise CableToolError(tr("Nothing to rebuild yet. Generate "
                                     "first, or select a build and use Edit "
                                     "> Load Selected."))
-        group = cable.rebuild(self.route(), self.settings(), self.extras())
-        self._refresh_current()
+        try:
+            group = cable.rebuild(self.route(), self.settings(),
+                                  self.extras())
+        finally:
+            self._refresh_current()  # also when the rebuild was refused
         cmds.select(group, replace=True)
         self.set_status(tr("Rebuilt {0}.").format(
             route_mod.short_name(group)), "ok")

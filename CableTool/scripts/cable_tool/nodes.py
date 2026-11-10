@@ -96,6 +96,13 @@ def cable_group_from(node):
     return None
 
 
+def made_by_tool(node):
+    """True for anything the tool built: a tagged node (a material, say)
+    or anything inside a build's group."""
+    return (cmds.attributeQuery(TAG_ATTR, node=node, exists=True)
+            or cable_group_from(node) is not None)
+
+
 def _delete(nodes):
     # One at a time with an existence check: deleting a group also
     # deletes its tagged children, which would make a single batched
