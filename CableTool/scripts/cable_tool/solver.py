@@ -33,7 +33,7 @@ import numpy as np
 import maya.api.OpenMaya as om
 
 from cable_tool.config import (CATENARY_TENSION, DRAPE_PROBE_HEIGHT, EPSILON,
-                               EXIT_TANGENT, LEAD_TANGENT)
+                               EXIT_TANGENT, LEAD_HOLD_RADII, LEAD_TANGENT)
 
 NODE_NAME = "cableToolSolver"
 # Maya reserves 0x00000-0x7ffff for local, unpublished plugins.
@@ -69,16 +69,17 @@ def catenary_weight(t, tension=CATENARY_TENSION):
 def _eased(t, ease_start, ease_end):
     weight = catenary_weight(t)
     if ease_start:
-        weight *= t * (2.0 - t)
+        weight *= 1.0 + float(ease_start) * (t * (2.0 - t) - 1.0)
     if ease_end:
-        weight *= 1.0 - t * t
+        weight *= 1.0 + float(ease_end) * (-t * t)
     return weight
 
 
 def sag_weight(t, ease_start=False, ease_end=False):
     """Catenary drop at t, peaking at 1. An eased end leaves its point
     level instead of at the chain's angle, so where two spans meet at a
-    waypoint the cable turns smoothly instead of forming a V."""
+    waypoint the cable turns smoothly instead of forming a V. An ease
+    between 0 and 1 is part-way between the two (a short lead-out)."""
     if not (ease_start or ease_end):
         return catenary_weight(t)
     peak = max(_eased(k / 200.0, ease_start, ease_end) for k in range(201))
@@ -105,12 +106,23 @@ def _unit(v):
     return v / length if length > EPSILON else v * 0.0
 
 
+def lead_hold(settings):
+    """0-1: how firmly a mesh end holds the cable to its exit direction.
+    0 at Lead-out Length 0, where the cable hangs from the attach point
+    at the chain's own angle, steepest right at the support, as a light
+    cable does; 1 once the lead-out is a few radii long, a stiff sleeve
+    the cable leaves straight out of before it turns and hangs."""
+    full = LEAD_HOLD_RADII * max(settings["radius"], EPSILON)
+    return min(1.0, max(0.0, settings["leadOut"] / full))
+
+
 def rest_shape(points, exits, eases, settings):
     """Particles along the path before physics.
 
     points: (n, 3) path points. exits: per point, a unit exit direction
-    (mesh ends) or None. eases: per point, whether the sag levels out
-    there. Returns (particles, pinned index list)."""
+    (mesh ends) or None. eases: per point, how much (0-1, or a bool) the
+    sag levels out there; at a mesh end this is its lead_hold().
+    Returns (particles, pinned index list)."""
     points = np.asarray(points, dtype=float)
     count = len(points)
     # Catmull-Rom tangents, mirrored past the ends. A mesh end uses its
@@ -126,8 +138,12 @@ def rest_shape(points, exits, eases, settings):
             continue
         neighbour = points[1] if i == 0 else points[-2]
         span = np.linalg.norm(neighbour - points[i])
-        size = EXIT_TANGENT * span + LEAD_TANGENT * settings["leadOut"]
-        tangents[i] = (exit_dir if i == 0 else -exit_dir) * size
+        # Held: out along the exit direction. Not held (no lead-out): the
+        # plain tangent toward the neighbour, as at a locator.
+        hold = float(eases[i])
+        size = EXIT_TANGENT * span * hold + LEAD_TANGENT * settings["leadOut"]
+        tangents[i] = (tangents[i] * (1.0 - hold)
+                       + (exit_dir if i == 0 else -exit_dir) * size)
 
     # Fine enough to follow contact: a point at least every tube
     # diameter, so a cable can wrap a support instead of folding over it.
@@ -490,14 +506,15 @@ class CableSolverNode(om.MPxNode):
         pins = {i: rest[i] for i in pinned}
         path_points = set(pinned)
         # Hold each mesh end straight along its exit direction for the
-        # Lead-out Length (at least one segment), like the stiff sleeve
-        # where a real cable leaves its connector.
+        # Lead-out Length, like the stiff sleeve where a real cable leaves
+        # its connector. With no lead-out nothing is held: the cable hangs
+        # from the attach point.
         last = len(rest) - 1
         for end, step, exit_dir in ((0, 1, exits[0]), (last, -1, exits[-1])):
             if exit_dir is None:
                 continue
             reach, index = 0.0, end
-            while reach < settings["leadOut"] or index == end:
+            while reach < settings["leadOut"]:
                 following = index + step
                 if following in path_points:
                     break  # never move the next path point
@@ -571,6 +588,7 @@ class CableSolverNode(om.MPxNode):
                 point, normal = colliders[i].closest(points[i])
             if i in (0, last):
                 points[i], exits[i] = point, normal
+                eases[i] = lead_hold(settings)
             else:  # a waypoint: the cable passes just off the surface
                 points[i] = point + normal * settings["radius"]
 
@@ -588,6 +606,7 @@ class CableSolverNode(om.MPxNode):
             toward = _unit(target - surface)
             points[i] = surface
             exits[i] = _unit(normal + toward)
+            eases[i] = lead_hold(settings)
 
         for i in range(1, last):
             if ports[i] is None and colliders[i] is not None \

@@ -43,7 +43,7 @@ PRESETS = (
     ("Cyberpunk Tangle", {
         "radius": 0.05, "sides": 8, "sag": 0.15, "stiffness": 0.1,
         "wireCount": 14, "spread": 1.5, "spreadRow": 0,
-        "slackVariation": 1.0, "thicknessVariation": 0.7, "leadOut": 0.1}),
+        "slackVariation": 1.0, "thicknessVariation": 0.7, "leadOut": 0.0}),
 )
 
 

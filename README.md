@@ -317,7 +317,7 @@ Every action is a single **Ctrl+Z**.
 | **Wires** | Wire Count · Spread | How many wires run along the route, and how far apart they meet each anchor. |
 | | Spread In A Row | On: parallel, like power lines on a crossarm. Off: a random tangle. |
 | | Slack / Thickness Variation · Seed | How much each wire differs from the others, and which random pattern is used. |
-| **Ends** | Attach Ends to Surface · Lead-out Length | Mesh ends start on the surface, and keep heading out of it for this distance before hanging. |
+| **Ends** | Attach Ends to Surface · Lead-out Length | Mesh ends start on the surface, and keep heading out of it for this distance before hanging. At 0 (the default) the cable hangs from the attach point, steepest right at the wall, as a light cable does; a stiff pipe wants a lead-out. |
 | **Surface** | End Caps · Texture Repeat per Unit | Closed tube ends; texture tiles per scene unit along the cable. |
 | **Hardware** | Clamp Mesh · Clamp Count · Clamp Size | Clamps riding each wire: your own mesh or a plain ring, how many, and how big relative to the wire. |
 

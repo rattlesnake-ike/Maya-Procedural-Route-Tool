@@ -41,6 +41,11 @@ EXIT_TANGENT = 0.6
 # lead-out length longer before it turns and hangs.
 LEAD_TANGENT = 3.0
 
+# A lead-out this many tube radii long holds the cable fully to its exit
+# direction; a shorter one holds it in proportion, and none lets it hang
+# from the attach point (see solver.lead_hold).
+LEAD_HOLD_RADII = 2.5
+
 
 # Sweep Mesh measures Twist in whole turns (1 = 360 degrees); the tool
 # shows degrees, so the network divides by this.
@@ -153,7 +158,7 @@ DEFAULTS = {
                 "tip": "When Start or End is a mesh, the cable ends on its "
                        "surface (the point facing the next anchor) instead "
                        "of at its pivot, so cables don't meet inside it."},
-    "leadOut": {"default": 0.3, "slider": (0.0, 2.0), "field": (0.0, 100.0),
+    "leadOut": {"default": 0.0, "slider": (0.0, 2.0), "field": (0.0, 100.0),
                 "type": "float", "rebuild": False, "label": "Lead-out Length",
                 "tip": "Roughly how far the cable keeps heading out of a "
                        "surface (between its normal and the next anchor) "

@@ -356,6 +356,40 @@ def cable_leaves_a_surface_without_folding():
 
 
 @test
+def no_lead_out_hangs_from_the_wall_and_a_lead_out_holds_it():
+    # Critique, 11-03: cables left their wall level and only then drooped.
+    # Unless it is heavy, a cable "scoops down right away": a hanging
+    # chain is steepest at its supports.
+    import math
+    a = cmds.polyCube(name="wallA", width=1, height=6, depth=6)[0]
+    cmds.xform(a, worldSpace=True, translation=(-0.5, 5, 0))
+    b = cmds.polyCube(name="wallB", width=1, height=6, depth=6)[0]
+    cmds.xform(b, worldSpace=True, translation=(10.5, 5, 0))
+
+    def fall(points, first, last):
+        """Degrees below level between two samples."""
+        p, q = points[first], points[last]
+        return math.degrees(math.atan2(p[1] - q[1], q[0] - p[0]))
+
+    cable = build([a, b])  # Lead-out Length 0 is the default
+    shape, _geo = parts(cable)
+    points = curve_points(shape)
+    assert close(points[0], (0, 5, 0), 0.01), points[0]  # on the wall
+    start, later = fall(points, 0, 8), fall(points, 60, 80)
+    assert 30 < start < 45, start       # sag 0.15: a chain leaves at ~39
+    assert start > later > 0, (start, later)  # and flattens from there
+    assert min(p[0] for p in points) > -1e-3  # never back into the wall
+
+    # A lead-out is the stiff sleeve of a pipe: straight out, then down.
+    cmds.setAttr(cable.group + ".leadOut", 0.4)
+    points = curve_points(shape)
+    assert abs(fall(points, 0, 8)) < 2, fall(points, 0, 8)
+    # In between, it is in between (no jump as the slider leaves 0).
+    cmds.setAttr(cable.group + ".leadOut", 0.1)
+    assert 2 < fall(curve_points(shape), 0, 8) < start
+
+
+@test
 def vertex_end_is_a_port_that_follows_the_vertex():
     # A vertex is a port: the cable plugs in there and leaves along the
     # vertex normal, and stays on it when the mesh is edited.
