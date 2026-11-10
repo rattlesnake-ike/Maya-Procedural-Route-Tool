@@ -1222,6 +1222,37 @@ def road_runs_over_the_ground_smoothly_and_never_under_it():
     assert abs(bbox(road_part(built, "surface"))[4] - before - 3.0) < 1e-2
 
 
+def road_on_a_slope(degrees, **settings):
+    """A straight road up an evenly tilted ground; returns the road and
+    the most its surface stands above the ground."""
+    import math
+    ground = cmds.polyPlane(name="slope", width=120, height=60)[0]
+    cmds.xform(ground, rotation=(0, 0, degrees))
+    a, b = locator("A", (-40, 0, 0)), locator("B", (40, 0, 0))
+    built = road([a, b], extras={"ground": ground}, **settings)
+    flat = cmds.xform(road_part(built, "surface") + ".vtx[*]", query=True,
+                      worldSpace=True, translation=True)
+    rise = math.tan(math.radians(degrees))
+    return built, max(y - x * rise for x, y in zip(flat[0::3], flat[1::3]))
+
+
+@test
+def road_lies_on_an_even_slope_it_is_allowed_to_climb():
+    # Critique, 11-03 (1:42:10): "on a lower slope it had more thickness".
+    # Smoothing held the end heights, which lifted the low end of every
+    # climb: 2.8 above the ground on an even 10% slope, 7.6 on a 27% one
+    # with Max Grade 30. An even slope within Max Grade needs no fill.
+    _built, above = road_on_a_slope(5.71)  # 10%, the default Max Grade
+    assert above < 0.2, above
+    cmds.file(new=True, force=True)
+    _built, above = road_on_a_slope(15.0, roadGrade=30.0)
+    assert above < 0.2, above
+    # Steeper than Max Grade it still ramps up on fill, by design.
+    cmds.file(new=True, force=True)
+    _built, above = road_on_a_slope(15.0)
+    assert above > 5.0, above
+
+
 @test
 def markings_follow_the_dash_rhythm_and_centre_style():
     a, b = locator("A", (0, 0, 0)), locator("B", (48, 0, 0))

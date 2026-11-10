@@ -76,14 +76,24 @@ def _unit_rows(v):
     return np.where(length > EPSILON, v / np.maximum(length, EPSILON), 0.0)
 
 
-def _box(values, width, closed):
-    """Moving average over width samples (wrapping on a closed road)."""
+def _box(values, width, closed, ramp=False):
+    """Moving average over width samples (wrapping on a closed road).
+    Past the ends of an open road the values are held; with ramp they
+    carry on at the slope they had (mirrored through the end value), so
+    a steady climb comes back unchanged and each end keeps its value."""
     width = int(width)
     if width < 2 or len(values) < 3:
         return values
     half = width // 2
     if closed:
         padded = np.concatenate([values[-half:], values, values[:half]])
+    elif ramp:
+        # Mirror indices, held at the far end if the road is shorter
+        # than the window.
+        reach = np.minimum(np.arange(1, half + 1), len(values) - 1)
+        padded = np.concatenate([2.0 * values[0] - values[reach[::-1]],
+                                 values,
+                                 2.0 * values[-1] - values[-1 - reach]])
     else:
         padded = np.concatenate([np.full(half, values[0]), values,
                                  np.full(half, values[-1])])
@@ -218,7 +228,7 @@ def round_crests(heights, window, loop):
     a crest: here the profile is smoothed, and what smoothing shaved off
     the crests is added back as a smooth bump, so the road still never
     dips below the ground."""
-    smooth = _box(heights, window, loop)
+    smooth = _box(heights, window, loop, ramp=True)
     shaved = np.maximum(heights - smooth, 0.0)
     return smooth + _box(_widest(shaved, window // 2, loop), window, loop)
 
@@ -364,7 +374,11 @@ def build_road(anchor_points, settings, ground=None):
         window = max(1, int(round(s["roadSmooth"] / max(spacing, EPSILON))))
         level = need.copy()
         for _ in range(SMOOTH_PASSES):
-            level = np.maximum(_box(level, window, loop), need)
+            # ramp: holding the end heights instead made every pass lift
+            # the low end of a climb, until a road on an even 10% slope
+            # stood 2.8 above the ground there (critique 11-03, 1:42:10:
+            # "on a lower slope it had more thickness").
+            level = np.maximum(_box(level, window, loop, ramp=True), need)
         level = limit_grade(round_crests(level, window, loop),
                             s["roadGrade"] / 100.0 * spacing, loop)
     else:
